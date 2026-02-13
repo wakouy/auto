@@ -30,6 +30,11 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
+      - name: Refresh keyword pool
+        run: |
+          set -euxo pipefail
+          python -m scripts.refresh_keywords --config config/system.yaml --keywords data/keywords.csv --tools data/tools.csv
+
       - name: Generate post
         id: generate
         env:

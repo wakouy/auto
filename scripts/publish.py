@@ -58,7 +58,9 @@ def _parse_date(value: str) -> dt.date:
         return dt.date(1970, 1, 1)
 
 
-def select_tool(rows: list[dict[str, str]]) -> dict[str, str]:
+def select_tool(
+    rows: list[dict[str, str]], excluded_tool_ids: set[str] | None = None
+) -> dict[str, str]:
     if not rows:
         raise ValueError("tools.csv has no rows")
     monetizable_rows = [
@@ -68,6 +70,14 @@ def select_tool(rows: list[dict[str, str]]) -> dict[str, str]:
         and not _is_placeholder_url(row.get("affiliate_url", ""))
     ]
     candidate_rows = monetizable_rows or rows
+    if excluded_tool_ids:
+        filtered = [
+            row
+            for row in candidate_rows
+            if row.get("tool_id", "").strip() not in excluded_tool_ids
+        ]
+        if filtered:
+            candidate_rows = filtered
     sorted_rows = sorted(
         candidate_rows, key=lambda r: _parse_date(r.get("last_posted_at", ""))
     )
@@ -102,6 +112,19 @@ def generate_unique_slug(base_slug: str, posts_dir: Path, date_prefix: str) -> s
         candidate = f"{base_slug}-{suffix}"
         suffix += 1
 
+    return candidate
+
+
+def reserve_unique_slug(
+    base_slug: str, posts_dir: Path, date_prefix: str, reserved_stems: set[str]
+) -> str:
+    slug = generate_unique_slug(base_slug, posts_dir, date_prefix)
+    candidate = slug
+    suffix = 2
+    while f"{date_prefix}-{candidate}" in reserved_stems:
+        candidate = f"{slug}-{suffix}"
+        suffix += 1
+    reserved_stems.add(f"{date_prefix}-{candidate}")
     return candidate
 
 
@@ -182,7 +205,9 @@ def _generate_one_post(
     now: dt.datetime,
     keywords: list[dict[str, str]],
     tools: list[dict[str, str]],
+    used_tool_ids: set[str],
     posts_dir: Path,
+    reserved_stems: set[str],
     force_template: bool,
     write: bool,
 ) -> tuple[dict[str, str] | None, list[dict[str, str]], list[dict[str, str]]]:
@@ -190,7 +215,8 @@ def _generate_one_post(
     if topic is None:
         return None, keywords, tools
 
-    tool = select_tool(tools)
+    tool = select_tool(tools, excluded_tool_ids=used_tool_ids)
+    used_tool_ids.add(tool.get("tool_id", ""))
     cta_url = resolve_cta_url(tool)
 
     draft = generate_article(
@@ -207,7 +233,9 @@ def _generate_one_post(
 
     slug_base = slugify(f"{topic['keyword']}-{tool['name']}")
     date_prefix = now.date().isoformat()
-    slug = generate_unique_slug(slug_base, posts_dir, date_prefix=date_prefix)
+    slug = reserve_unique_slug(
+        slug_base, posts_dir, date_prefix=date_prefix, reserved_stems=reserved_stems
+    )
 
     markdown = build_post_markdown(
         title=draft.title,
@@ -286,6 +314,8 @@ def cli() -> int:
     current_keywords = keywords
     current_tools = tools
     generated: list[dict[str, str]] = []
+    reserved_stems: set[str] = set()
+    used_tool_ids: set[str] = set()
 
     for index in range(posts_per_run):
         result, current_keywords, current_tools = _generate_one_post(
@@ -293,7 +323,9 @@ def cli() -> int:
             now=now + dt.timedelta(minutes=index),
             keywords=current_keywords,
             tools=current_tools,
+            used_tool_ids=used_tool_ids,
             posts_dir=posts_dir,
+            reserved_stems=reserved_stems,
             force_template=args.mock,
             write=not args.dry_run,
         )

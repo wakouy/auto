@@ -90,6 +90,22 @@ def _ensure_cta_block(tool_name: str, cta_url: str) -> str:
     )
 
 
+def _cta_count(text: str) -> int:
+    return len(re.findall(r'<a\s+[^>]*rel=\"[^\"]*sponsored[^\"]*nofollow[^\"]*\"[^>]*>', text))
+
+
+def _ensure_min_cta_blocks(body: str, tool_name: str, cta_url: str, min_count: int = 2) -> str:
+    cta = _ensure_cta_block(tool_name, cta_url)
+    paragraphs = [part.strip() for part in body.split("\n\n") if part.strip()]
+    if not paragraphs:
+        paragraphs = [body.strip()]
+
+    while _cta_count("\n\n".join(paragraphs)) < min_count:
+        insert_pos = min(2, len(paragraphs))
+        paragraphs.insert(insert_pos, cta)
+    return "\n\n".join(paragraphs)
+
+
 def _visible_char_count(text: str) -> int:
     no_markup = re.sub(r"<[^>]+>", "", text)
     no_space = re.sub(r"\s+", "", no_markup)
@@ -107,6 +123,7 @@ def _fallback_article(
     title = f"{keyword}を最短で実務導入するためのチェックリスト"
     sections = [
         f"{disclosure_text}。本記事では、{keyword}を検討している方に向けて、{intent}を前提に導入までの流れを具体化します。AIツールは機能比較だけで判断すると失敗しやすいため、業務フロー、教育コスト、既存システムとの接続性、そして継続運用の観点を同時に評価することが重要です。",
+        _ensure_cta_block(tool_name, cta_url),
         f"最初に確認すべきは、{tool_name}で何を短縮したいのかを一文で定義することです。たとえば『週次レポート作成の所要時間を半分にする』『問い合わせ一次回答を平日日中に5分以内で返す』のように、対象業務と数値を明確にすると、機能の過不足を定量比較できます。目的が曖昧なまま試すと、便利そうに見える機能へ時間を使い、効果測定が不能になります。",
         f"次に、入力データの品質を点検します。AIツールの成果は、モデル性能だけでなく、与えるコンテキストの正確性に依存します。命名規則が統一されていないファイル、更新履歴のないドキュメント、重複した顧客情報が混在している状態では、回答の一貫性が崩れます。導入前に『最新の正データはどこか』『更新責任者は誰か』を固定し、運用ルールを最小限で整えると、初期効果が出やすくなります。",
         f"費用評価では、月額料金だけでなく運用コストを含めて見積もるべきです。具体的には、管理者の監視時間、プロンプトの保守、チーム教育、障害時の代替フローを合算します。短期的には低価格プランが有利でも、制限で業務が分断されると結果的に高く付きます。反対に、必要最小限の機能で小さく始め、効果が確認できたら段階的に拡張する方式は失敗確率を下げます。",
@@ -122,7 +139,7 @@ def _fallback_article(
     ]
     while _visible_char_count("\n\n".join(sections)) < (min_chars + 80):
         sections.extend(supplements)
-    body = "\n\n".join(sections)
+    body = _ensure_min_cta_blocks("\n\n".join(sections), tool_name, cta_url, min_count=2)
     summary = f"{keyword}の導入判断で失敗しないための実務チェックポイントを整理。"
     return ArticleDraft(title=title, body=body, summary=summary, used_model=False)
 
@@ -179,8 +196,7 @@ def generate_article(
         title, body = _parse_model_output(generated_text, fallback.title)
         if disclosure_text not in body:
             body = f"{disclosure_text}\n\n{body}"
-        if 'rel="sponsored nofollow"' not in body:
-            body = f"{body}\n\n{_ensure_cta_block(tool_name, cta_url)}"
+        body = _ensure_min_cta_blocks(body, tool_name, cta_url, min_count=2)
         if len(body) < min_chars:
             return fallback
         return ArticleDraft(title=title, body=body, summary=fallback.summary, used_model=True)

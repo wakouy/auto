@@ -25,3 +25,7 @@ analytics:
 
 cost:
   max_monthly_usd: 5.0
+
+growth:
+  min_keyword_pool: 80
+  keyword_add_limit: 40

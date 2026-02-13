@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import datetime as dt
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -82,7 +83,11 @@ def slugify(text: str) -> str:
     value = re.sub(r"\s+", "-", value)
     value = re.sub(r"[^a-z0-9\-]", "-", value)
     value = re.sub(r"-+", "-", value)
-    return value.strip("-") or "post"
+    cleaned = value.strip("-")
+    if cleaned:
+        return cleaned
+    digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:8]
+    return f"kw-{digest}"
 
 
 def parse_priority(value: str) -> int:

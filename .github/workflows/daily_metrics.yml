@@ -1,8 +1,8 @@
-name: Weekly Report
+name: Daily Metrics Sync
 
 on:
   schedule:
-    - cron: '0 1 * * 1'
+    - cron: '40 0 * * *'
   workflow_dispatch:
 
 permissions:
@@ -10,7 +10,7 @@ permissions:
   issues: write
 
 jobs:
-  report:
+  sync:
     runs-on: ubuntu-latest
     env:
       GA4_SERVICE_ACCOUNT_JSON: ${{ secrets.GA4_SERVICE_ACCOUNT_JSON }}
@@ -34,26 +34,21 @@ jobs:
           printf '%s' "$GA4_SERVICE_ACCOUNT_JSON" > /tmp/ga4-sa.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/ga4-sa.json" >> "$GITHUB_ENV"
 
-      - name: Sync yesterday metrics (optional)
+      - name: Sync GA4 daily metrics
         run: |
           set -euxo pipefail
           python -m scripts.sync_ga4_metrics --config config/system.yaml --metrics data/analytics_metrics.csv
-
-      - name: Generate weekly report
-        run: |
-          set -euxo pipefail
-          python -m scripts.weekly_report --config config/system.yaml --reports-dir reports
 
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Commit and push report
+      - name: Commit and push metrics
         run: |
-          if [[ -n "$(git status --porcelain reports/ data/analytics_metrics.csv)" ]]; then
-            git add reports/ data/analytics_metrics.csv
-            git commit -m "chore: weekly KPI report"
+          if [[ -n "$(git status --porcelain data/analytics_metrics.csv)" ]]; then
+            git add data/analytics_metrics.csv
+            git commit -m "chore: sync daily analytics metrics"
             git push
           fi
 
@@ -63,9 +58,9 @@ jobs:
         with:
           script: |
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const title = `Weekly report failed (${new Date().toISOString().slice(0,10)})`;
+            const title = `Daily metrics sync failed (${new Date().toISOString().slice(0,10)})`;
             const body = [
-              'Weekly report workflow failed.',
+              'Daily metrics sync workflow failed.',
               '',
               `Run URL: ${runUrl}`,
               `Workflow: ${context.workflow}`,
@@ -76,5 +71,5 @@ jobs:
               repo: context.repo.repo,
               title,
               body,
-              labels: ['automation', 'report-failure']
+              labels: ['automation', 'metrics-failure']
             });
