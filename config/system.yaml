@@ -5,7 +5,7 @@ site:
 content:
   language: "ja"
   min_chars: 1400
-  posts_per_run: 1
+  posts_per_run: 2
 
 generation:
   provider: "huggingface_free"
