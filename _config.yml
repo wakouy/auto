@@ -1,0 +1,19 @@
+title: "Auto Revenue Lab"
+description: "日本語AIツール特化の自動収益化サイト"
+url: ""
+baseurl: ""
+lang: "ja"
+markdown: kramdown
+kramdown:
+  input: GFM
+
+exclude:
+  - scripts
+  - tests
+  - requirements.txt
+  - README.md
+  - data
+  - reports
+  - .github
+
+ga4_measurement_id: ""
