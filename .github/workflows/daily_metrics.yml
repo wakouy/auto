@@ -49,7 +49,8 @@ jobs:
           if [[ -n "$(git status --porcelain data/analytics_metrics.csv)" ]]; then
             git add data/analytics_metrics.csv
             git commit -m "chore: sync daily analytics metrics"
-            git push
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi
 
       - name: Create issue on failure

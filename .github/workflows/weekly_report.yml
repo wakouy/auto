@@ -59,7 +59,8 @@ jobs:
           if [[ -n "$(git status --porcelain reports/ data/analytics_metrics.csv)" ]]; then
             git add reports/ data/analytics_metrics.csv
             git commit -m "chore: weekly KPI report"
-            git push
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi
 
       - name: Create issue on failure

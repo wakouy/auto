@@ -51,10 +51,11 @@ jobs:
       - name: Commit and push if changed
         id: commit
         run: |
-          if [[ -n "$(git status --porcelain)" ]]; then
+          if [[ -n "$(git status --porcelain content/posts data/keywords.csv data/tools.csv)" ]]; then
             git add content/posts data/keywords.csv data/tools.csv
             git commit -m "chore: auto-publish daily post"
-            git push
+            git pull --rebase origin main
+            git push origin HEAD:main
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
