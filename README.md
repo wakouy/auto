@@ -8,6 +8,7 @@
 - 日次: キーワード在庫を自動補充（投稿ネタ切れ防止）
 - 日次: GA4メトリクスを `data/analytics_metrics.csv` に自動同期（設定時）
 - 週次: PV/クリックから推定収益レポートを `reports/` に生成
+- 週次: Search Console提出チェックリストを `reports/search-console-checklist.md` に生成
 - 規約対応: 広告表記ページ・プライバシーページを常設
 - 収益優先: `approved/active` かつ実リンクの案件を優先投稿
 
@@ -41,6 +42,7 @@ python -m scripts.weekly_report --config config/system.yaml
 python -m scripts.sync_ga4_metrics --config config/system.yaml --metrics data/analytics_metrics.csv
 python -m scripts.refresh_keywords --config config/system.yaml --keywords data/keywords.csv --tools data/tools.csv
 python -m scripts.monetization_audit --config config/system.yaml
+python -m scripts.search_console_checklist --config config/system.yaml --output reports/search-console-checklist.md
 ```
 
 ## テスト

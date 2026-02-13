@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import os
 import re
 import textwrap
@@ -23,6 +24,50 @@ class ArticleDraft:
     body: str
     summary: str
     used_model: bool
+
+
+def _compact_spaces(text: str) -> str:
+    return re.sub(r"\s+", " ", text or "").strip()
+
+
+def optimize_title_for_ctr(
+    *,
+    title: str,
+    keyword: str,
+    intent: str,
+    tool_name: str,
+    max_chars: int = 48,
+) -> str:
+    year = dt.datetime.now().year
+    keyword_clean = _compact_spaces(keyword)
+    intent_clean = _compact_spaces(intent)
+    current = _compact_spaces(title)
+
+    if "比較" in keyword_clean or "比較" in intent_clean:
+        hook = "比較ポイント5つ"
+    elif "料金" in keyword_clean or "費用" in keyword_clean or "料金" in intent_clean:
+        hook = "料金と失敗しない選び方"
+    elif "初心者" in keyword_clean or "初" in intent_clean:
+        hook = "初心者向け導入手順"
+    elif "活用" in keyword_clean or "事例" in keyword_clean:
+        hook = "活用事例3選"
+    else:
+        hook = "失敗しない導入チェックリスト"
+
+    candidate = f"【{year}年版】{keyword_clean} {hook}｜{tool_name}"
+    if len(candidate) <= max_chars:
+        return candidate
+
+    candidate = f"【{year}年版】{keyword_clean} {hook}"
+    if len(candidate) <= max_chars:
+        return candidate
+
+    if current and keyword_clean in current and len(current) <= max_chars:
+        return current
+
+    if len(keyword_clean) > max_chars - 9:
+        keyword_clean = keyword_clean[: max_chars - 10] + "…"
+    return f"【{year}年版】{keyword_clean}"
 
 
 def _build_prompt(
@@ -120,7 +165,12 @@ def _fallback_article(
     disclosure_text: str,
     min_chars: int,
 ) -> ArticleDraft:
-    title = f"{keyword}を最短で実務導入するためのチェックリスト"
+    title = optimize_title_for_ctr(
+        title="",
+        keyword=keyword,
+        intent=intent,
+        tool_name=tool_name,
+    )
     sections = [
         f"{disclosure_text}。本記事では、{keyword}を検討している方に向けて、{intent}を前提に導入までの流れを具体化します。AIツールは機能比較だけで判断すると失敗しやすいため、業務フロー、教育コスト、既存システムとの接続性、そして継続運用の観点を同時に評価することが重要です。",
         _ensure_cta_block(tool_name, cta_url),
@@ -193,7 +243,13 @@ def generate_article(
     )
     try:
         generated_text = _call_huggingface(model=model, token=token, prompt=prompt)
-        title, body = _parse_model_output(generated_text, fallback.title)
+        raw_title, body = _parse_model_output(generated_text, fallback.title)
+        title = optimize_title_for_ctr(
+            title=raw_title,
+            keyword=keyword,
+            intent=intent,
+            tool_name=tool_name,
+        )
         if disclosure_text not in body:
             body = f"{disclosure_text}\n\n{body}"
         body = _ensure_min_cta_blocks(body, tool_name, cta_url, min_count=2)

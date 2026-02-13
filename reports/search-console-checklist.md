@@ -1,0 +1,28 @@
+# Search Console 提出チェックリスト
+
+- 生成日時: 2026-02-14 07:18 JST
+- 対象サイト: https://wakouy.github.io/auto
+- 自動チェック: 7/10 PASS
+
+## 自動チェック結果
+- [x] site.base_url が https で設定済み（https://wakouy.github.io/auto）
+- [ ] GA4 Measurement ID が設定済み（未設定）
+- [x] robots.txt がリポジトリに存在（/Users/shimojikouichi/Documents/auto/robots.txt）
+- [x] sitemap.xml がリポジトリに存在（/Users/shimojikouichi/Documents/auto/sitemap.xml）
+- [x] 広告表記ページが存在（/Users/shimojikouichi/Documents/auto/content/legal/disclosure.md）
+- [x] プライバシーポリシーが存在（/Users/shimojikouichi/Documents/auto/content/legal/privacy.md）
+- [x] 収益化リンク(approved/active)が1件以上（3件）
+- [x] 公開サイトが到達可能（HTTP 200）
+- [ ] 公開 sitemap.xml が到達可能（HTTP 404）
+- [ ] 公開 robots.txt が到達可能（HTTP 404）
+
+## 手動チェック（Search Consoleで1回だけ実施）
+- [ ] Search ConsoleでURLプレフィックス プロパティを追加
+- [ ] 所有権確認を完了（対象: https://wakouy.github.io/auto）
+- [ ] `sitemap.xml` を送信（https://wakouy.github.io/auto/sitemap.xml）
+- [ ] インデックス未登録ページがあれば原因を確認
+- [ ] 主要記事URLをURL検査で送信
+
+## 運用ルール
+- 週1回このチェックを見て、未達項目だけ修正する。
+- `公開 sitemap.xml` と `公開 robots.txt` がFAILなら最優先で修正する。

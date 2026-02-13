@@ -1,0 +1,16 @@
+---
+layout: null
+permalink: /sitemap.xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  {% assign sitemap_pages = site.pages | where_exp: "p", "p.url and p.url != '/sitemap.xml' and p.url != '/robots.txt'" %}
+  {% for page in sitemap_pages %}
+    {% if page.url %}
+  <url>
+    <loc>{{ site.url }}{{ site.baseurl }}{{ page.url | replace: 'index.html', '' }}</loc>
+    <lastmod>{% if page.date %}{{ page.date | date_to_xmlschema }}{% else %}{{ site.time | date_to_xmlschema }}{% endif %}</lastmod>
+  </url>
+    {% endif %}
+  {% endfor %}
+</urlset>

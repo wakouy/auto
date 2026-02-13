@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from scripts.generate_article import generate_article
+from scripts.generate_article import generate_article, optimize_title_for_ctr
 
 
 def test_generate_article_fallback_contains_two_ctas() -> None:
@@ -17,3 +17,16 @@ def test_generate_article_fallback_contains_two_ctas() -> None:
     )
 
     assert draft.body.count('rel="sponsored nofollow"') >= 2
+
+
+def test_optimize_title_for_ctr_limits_length_and_keeps_keyword() -> None:
+    title = optimize_title_for_ctr(
+        title="長すぎる仮タイトル",
+        keyword="AI導入 チェックリスト",
+        intent="失敗しない導入手順を確認したい",
+        tool_name="ココナラ",
+        max_chars=48,
+    )
+
+    assert "AI導入" in title
+    assert len(title) <= 48
