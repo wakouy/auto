@@ -1,7 +1,7 @@
 title: "Auto Revenue Lab"
 description: "日本語AIツール特化の自動収益化サイト"
-url: ""
-baseurl: ""
+url: "https://wakouy.github.io"
+baseurl: "/auto"
 lang: "ja"
 markdown: kramdown
 kramdown:
