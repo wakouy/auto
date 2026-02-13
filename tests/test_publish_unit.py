@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.publish import generate_unique_slug
+from scripts.publish import generate_unique_slug, resolve_cta_url, select_tool
 from scripts.quality_gate import run_quality_gate
 
 
@@ -36,3 +36,43 @@ layout: post
 
     assert not result.passed
     assert any("広告表記文" in issue for issue in result.issues)
+
+
+def test_select_tool_prefers_affiliate_ready_real_link() -> None:
+    rows = [
+        {
+            "tool_id": "tool-001",
+            "name": "Pending Tool",
+            "category": "x",
+            "official_url": "https://official.example/a",
+            "affiliate_url": "https://example.com/a8/pending",
+            "status": "pending",
+            "last_posted_at": "2026-01-01",
+        },
+        {
+            "tool_id": "tool-002",
+            "name": "Approved Tool",
+            "category": "x",
+            "official_url": "https://official.example/b",
+            "affiliate_url": "https://a8.net/real-link",
+            "status": "approved",
+            "last_posted_at": "2026-02-01",
+        },
+    ]
+
+    selected = select_tool(rows)
+    assert selected["tool_id"] == "tool-002"
+    assert resolve_cta_url(selected) == "https://a8.net/real-link"
+
+
+def test_resolve_cta_url_falls_back_when_affiliate_is_placeholder() -> None:
+    tool = {
+        "tool_id": "tool-009",
+        "name": "Demo",
+        "category": "x",
+        "official_url": "https://official.example/demo",
+        "affiliate_url": "https://example.com/a8/demo",
+        "status": "approved",
+        "last_posted_at": "",
+    }
+    assert resolve_cta_url(tool) == "https://official.example/demo"

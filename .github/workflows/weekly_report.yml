@@ -12,6 +12,8 @@ permissions:
 jobs:
   report:
     runs-on: ubuntu-latest
+    env:
+      GA4_SERVICE_ACCOUNT_JSON: ${{ secrets.GA4_SERVICE_ACCOUNT_JSON }}
 
     steps:
       - name: Checkout
@@ -26,9 +28,9 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Write GA credentials (optional)
-        if: ${{ secrets.GA4_SERVICE_ACCOUNT_JSON != '' }}
+        if: ${{ env.GA4_SERVICE_ACCOUNT_JSON != '' }}
         run: |
-          printf '%s' '${{ secrets.GA4_SERVICE_ACCOUNT_JSON }}' > /tmp/ga4-sa.json
+          printf '%s' "$GA4_SERVICE_ACCOUNT_JSON" > /tmp/ga4-sa.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/ga4-sa.json" >> "$GITHUB_ENV"
 
       - name: Generate weekly report

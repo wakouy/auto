@@ -34,6 +34,21 @@ TOOLS_COLUMNS = [
     "last_posted_at",
 ]
 COST_COLUMNS = ["month", "total_usd"]
+AFFILIATE_READY_STATUSES = {"approved", "active", "affiliate_ready"}
+
+
+def _is_placeholder_url(url: str) -> bool:
+    value = (url or "").strip().lower()
+    if not value:
+        return True
+    placeholders = [
+        "example.com",
+        "replace-me",
+        "your-affiliate-link",
+        "<",
+        ">",
+    ]
+    return any(token in value for token in placeholders)
 
 
 def _parse_date(value: str) -> dt.date:
@@ -46,21 +61,33 @@ def _parse_date(value: str) -> dt.date:
 def select_tool(rows: list[dict[str, str]]) -> dict[str, str]:
     if not rows:
         raise ValueError("tools.csv has no rows")
-    sorted_rows = sorted(rows, key=lambda r: _parse_date(r.get("last_posted_at", "")))
+    monetizable_rows = [
+        row
+        for row in rows
+        if row.get("status", "").strip().lower() in AFFILIATE_READY_STATUSES
+        and not _is_placeholder_url(row.get("affiliate_url", ""))
+    ]
+    candidate_rows = monetizable_rows or rows
+    sorted_rows = sorted(
+        candidate_rows, key=lambda r: _parse_date(r.get("last_posted_at", ""))
+    )
     return sorted_rows[0]
 
 
 def resolve_cta_url(tool: dict[str, str]) -> str:
     status = tool.get("status", "").strip().lower()
-    affiliate_statuses = {"approved", "active", "affiliate_ready"}
     affiliate_url = tool.get("affiliate_url", "").strip()
     official_url = tool.get("official_url", "").strip()
 
-    if status in affiliate_statuses and affiliate_url:
+    if (
+        status in AFFILIATE_READY_STATUSES
+        and affiliate_url
+        and not _is_placeholder_url(affiliate_url)
+    ):
         return affiliate_url
     if official_url:
         return official_url
-    if affiliate_url:
+    if affiliate_url and not _is_placeholder_url(affiliate_url):
         return affiliate_url
     raise ValueError(f"tool '{tool.get('name', 'unknown')}' has no usable URL")
 
@@ -149,6 +176,76 @@ def _update_tool_last_posted(
     return new_rows
 
 
+def _generate_one_post(
+    *,
+    config: dict[str, object],
+    now: dt.datetime,
+    keywords: list[dict[str, str]],
+    tools: list[dict[str, str]],
+    posts_dir: Path,
+    force_template: bool,
+    write: bool,
+) -> tuple[dict[str, str] | None, list[dict[str, str]], list[dict[str, str]]]:
+    topic = select_topic(keywords)
+    if topic is None:
+        return None, keywords, tools
+
+    tool = select_tool(tools)
+    cta_url = resolve_cta_url(tool)
+
+    draft = generate_article(
+        keyword=topic["keyword"],
+        intent=topic["intent"],
+        tool_name=tool["name"],
+        cta_url=cta_url,
+        disclosure_text=str(config["affiliate"]["disclosure_text"]),
+        min_chars=int(config["content"]["min_chars"]),
+        model=str(config["generation"]["model"]),
+        provider=str(config["generation"]["provider"]),
+        force_template=force_template,
+    )
+
+    slug_base = slugify(f"{topic['keyword']}-{tool['name']}")
+    date_prefix = now.date().isoformat()
+    slug = generate_unique_slug(slug_base, posts_dir, date_prefix=date_prefix)
+
+    markdown = build_post_markdown(
+        title=draft.title,
+        now=now,
+        slug=slug,
+        keyword=topic["keyword"],
+        intent=topic["intent"],
+        tool=tool,
+        cta_url=cta_url,
+        body=draft.body,
+    )
+
+    gate = run_quality_gate(
+        text=markdown,
+        min_chars=int(config["content"]["min_chars"]),
+        disclosure_text=str(config["affiliate"]["disclosure_text"]),
+    )
+    if not gate.passed:
+        raise RuntimeError("Quality gate failed: " + " | ".join(gate.issues))
+
+    output_file = posts_dir / f"{date_prefix}-{slug}.md"
+    if write:
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        output_file.write_text(markdown, encoding="utf-8")
+
+    updated_keywords = mark_topic_used(keywords, topic["keyword"], now)
+    updated_tools = _update_tool_last_posted(tools, tool["tool_id"], now)
+    result = {
+        "output": str(output_file),
+        "title": draft.title,
+        "keyword": topic["keyword"],
+        "tool": tool["name"],
+        "cta_url": cta_url,
+        "used_model": str(draft.used_model).lower(),
+    }
+    return result, updated_keywords, updated_tools
+
+
 def cli() -> int:
     parser = argparse.ArgumentParser(description="Generate and publish one post")
     parser.add_argument("--config", default="config/system.yaml")
@@ -184,71 +281,41 @@ def cli() -> int:
         )
         return 0
 
-    topic = select_topic(keywords)
-    if topic is None:
+    posts_dir = resolve_path(args.posts_dir)
+    posts_per_run = max(1, int(config["content"]["posts_per_run"]))
+    current_keywords = keywords
+    current_tools = tools
+    generated: list[dict[str, str]] = []
+
+    for index in range(posts_per_run):
+        result, current_keywords, current_tools = _generate_one_post(
+            config=config,
+            now=now + dt.timedelta(minutes=index),
+            keywords=current_keywords,
+            tools=current_tools,
+            posts_dir=posts_dir,
+            force_template=args.mock,
+            write=not args.dry_run,
+        )
+        if result is None:
+            break
+        generated.append(result)
+
+    if not generated:
         print(dump_json({"skipped": True, "reason": "no_topic_available"}))
         return 0
 
-    tool = select_tool(tools)
-    cta_url = resolve_cta_url(tool)
-
-    draft = generate_article(
-        keyword=topic["keyword"],
-        intent=topic["intent"],
-        tool_name=tool["name"],
-        cta_url=cta_url,
-        disclosure_text=str(config["affiliate"]["disclosure_text"]),
-        min_chars=int(config["content"]["min_chars"]),
-        model=str(config["generation"]["model"]),
-        provider=str(config["generation"]["provider"]),
-        force_template=args.mock,
-    )
-
-    posts_dir = resolve_path(args.posts_dir)
-    slug_base = slugify(f"{topic['keyword']}-{tool['name']}")
-    date_prefix = today.isoformat()
-    slug = generate_unique_slug(slug_base, posts_dir, date_prefix=date_prefix)
-
-    markdown = build_post_markdown(
-        title=draft.title,
-        now=now,
-        slug=slug,
-        keyword=topic["keyword"],
-        intent=topic["intent"],
-        tool=tool,
-        cta_url=cta_url,
-        body=draft.body,
-    )
-
-    gate = run_quality_gate(
-        text=markdown,
-        min_chars=int(config["content"]["min_chars"]),
-        disclosure_text=str(config["affiliate"]["disclosure_text"]),
-    )
-    if not gate.passed:
-        raise RuntimeError("Quality gate failed: " + " | ".join(gate.issues))
-
-    output_file = posts_dir / f"{date_prefix}-{slug}.md"
-
     if not args.dry_run:
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-        output_file.write_text(markdown, encoding="utf-8")
-        updated_keywords = mark_topic_used(keywords, topic["keyword"], now)
-        updated_tools = _update_tool_last_posted(tools, tool["tool_id"], now)
-        write_csv_rows(args.keywords, updated_keywords, KEYWORD_COLUMNS)
-        write_csv_rows(args.tools, updated_tools, TOOLS_COLUMNS)
+        write_csv_rows(args.keywords, current_keywords, KEYWORD_COLUMNS)
+        write_csv_rows(args.tools, current_tools, TOOLS_COLUMNS)
 
     month_last_day = calendar.monthrange(today.year, today.month)[1]
     print(
         dump_json(
             {
                 "skipped": False,
-                "output": str(output_file),
-                "title": draft.title,
-                "keyword": topic["keyword"],
-                "tool": tool["name"],
-                "cta_url": cta_url,
-                "used_model": draft.used_model,
+                "count": len(generated),
+                "posts": generated,
                 "month_end": f"{today.year}-{today.month:02d}-{month_last_day:02d}",
             }
         )

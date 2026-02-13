@@ -7,6 +7,7 @@
 - 日次: GitHub Actionsで自動コミットしてGitHub Pages公開
 - 週次: PV/クリックから推定収益レポートを `reports/` に生成
 - 規約対応: 広告表記ページ・プライバシーページを常設
+- 収益優先: `approved/active` かつ実リンクの案件を優先投稿
 
 ## 必須構成
 - 設定: `config/system.yaml`
@@ -34,6 +35,7 @@ pip install -r requirements.txt
 
 python -m scripts.publish --config config/system.yaml --mock
 python -m scripts.weekly_report --config config/system.yaml
+python -m scripts.monetization_audit --config config/system.yaml
 ```
 
 ## テスト
@@ -45,3 +47,5 @@ pytest -q
 - `tools.csv` の `status` が `approved` / `active` / `affiliate_ready` の場合、`affiliate_url` をCTAに利用
 - それ以外は `official_url` を利用（ASP審査中向け）
 - `data/costs.csv` の当月 `total_usd` が `cost.max_monthly_usd` を超えると、奇数日は投稿を自動スキップ
+- `content.posts_per_run` を `2` 以上にすると1回の実行で複数記事を生成可能
+- `affiliate_url` が `example.com` などのダミー値の場合は収益案件として扱わず、公式URLへフォールバック
