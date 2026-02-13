@@ -56,6 +56,7 @@ def build_checks(
 ) -> list[CheckItem]:
     base_url = str(config["site"]["base_url"]).rstrip("/")
     measurement_id = str(site_config.get("ga4_measurement_id", "")).strip()
+    layout_text = resolve_path("_layouts/default.html").read_text(encoding="utf-8")
 
     checks: list[CheckItem] = [
         CheckItem(
@@ -87,6 +88,20 @@ def build_checks(
             name="プライバシーポリシーが存在",
             passed=resolve_path("content/legal/privacy.md").exists(),
             detail=str(resolve_path("content/legal/privacy.md")),
+        ),
+        CheckItem(
+            name="利用規約ページが存在",
+            passed=resolve_path("content/legal/terms.md").exists(),
+            detail=str(resolve_path("content/legal/terms.md")),
+        ),
+        CheckItem(
+            name="Cookie同意バナー(同意前GA停止)が実装済み",
+            passed=(
+                "cookie-consent-banner" in layout_text
+                and "data-cookie-action=\"accept\"" in layout_text
+                and "if (hasConsent())" in layout_text
+            ),
+            detail="_layouts/default.html",
         ),
     ]
 

@@ -10,6 +10,7 @@
 - 週次: PV/クリックから推定収益レポートを `reports/` に生成
 - 週次: Search Console提出チェックリストを `reports/search-console-checklist.md` に生成
 - 規約対応: 広告表記ページ・プライバシーページを常設
+- 規約対応: 利用規約ページ + Cookie同意バナー（同意前はGA停止）
 - 収益優先: `approved/active` かつ実リンクの案件を優先投稿
 
 ## 必須構成
@@ -18,6 +19,7 @@
 - キーワード台帳: `data/keywords.csv`
 - 記事: `content/posts/YYYY-MM-DD-<slug>.md`
 - 法令: `content/legal/disclosure.md`, `content/legal/privacy.md`
+- 法令: `content/legal/disclosure.md`, `content/legal/privacy.md`, `content/legal/terms.md`
 - ワークフロー: `.github/workflows/publish.yml`, `.github/workflows/weekly_report.yml`
 - 日次メトリクス: `.github/workflows/daily_metrics.yml`
 

@@ -6,25 +6,6 @@
   <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>
   <meta name="description" content="{{ page.excerpt | strip_html | truncate: 140 }}">
   <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
-  {% if site.ga4_measurement_id and site.ga4_measurement_id != "" %}
-  <script async src="https://www.googletagmanager.com/gtag/js?id={{ site.ga4_measurement_id }}"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', '{{ site.ga4_measurement_id }}');
-
-    document.addEventListener('click', function(event) {
-      const link = event.target.closest('a[data-affiliate="true"]');
-      if (!link) return;
-      gtag('event', 'affiliate_click', {
-        link_url: link.href,
-        link_text: link.textContent || '',
-        page_path: window.location.pathname
-      });
-    });
-  </script>
-  {% endif %}
 </head>
 <body>
   <header class="site-header">
@@ -46,13 +27,143 @@
     <div class="wrap footer-links">
       <a href="{{ '/legal/disclosure/' | relative_url }}">広告表記</a>
       <a href="{{ '/legal/privacy/' | relative_url }}">プライバシーポリシー</a>
+      <a href="{{ '/legal/terms/' | relative_url }}">利用規約</a>
+      {% if site.ga4_measurement_id and site.ga4_measurement_id != "" %}
+      <button id="cookie-settings-open" type="button" class="cookie-settings-btn">Cookie設定</button>
+      {% endif %}
     </div>
   </footer>
 
+  {% if site.ga4_measurement_id and site.ga4_measurement_id != "" %}
+  <section
+    id="cookie-consent-banner"
+    class="cookie-banner"
+    role="dialog"
+    aria-live="polite"
+    aria-label="Cookie利用の同意"
+    hidden
+  >
+    <p>
+      当サイトはアクセス解析（GA4）と成果測定のためにCookieを利用します。<br>
+      「同意する」を押すと計測を開始します。詳細は
+      <a href="{{ '/legal/privacy/' | relative_url }}">プライバシーポリシー</a>
+      をご確認ください。
+    </p>
+    <div class="cookie-banner-actions">
+      <button type="button" data-cookie-action="accept">同意する</button>
+      <button type="button" data-cookie-action="reject">同意しない</button>
+    </div>
+  </section>
+  {% endif %}
+
   <script>
-    document.querySelectorAll('a[rel~="sponsored"]').forEach(function(a) {
-      a.setAttribute('data-affiliate', 'true');
-    });
+    (function() {
+      const measurementId = '{{ site.ga4_measurement_id }}';
+      const hasGa = measurementId && measurementId !== '';
+      const consentKey = 'arl_cookie_consent_v1';
+
+      function markAffiliateLinks() {
+        document.querySelectorAll('a[rel~="sponsored"]').forEach(function(a) {
+          a.setAttribute('data-affiliate', 'true');
+        });
+      }
+
+      function getConsent() {
+        try {
+          return localStorage.getItem(consentKey);
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function setConsent(value) {
+        try {
+          localStorage.setItem(consentKey, value);
+        } catch (error) {
+          return;
+        }
+      }
+
+      function hasConsent() {
+        return getConsent() === 'accepted';
+      }
+
+      function bannerElement() {
+        return document.getElementById('cookie-consent-banner');
+      }
+
+      function hideBanner() {
+        const el = bannerElement();
+        if (el) el.hidden = true;
+      }
+
+      function showBanner() {
+        const el = bannerElement();
+        if (el) el.hidden = false;
+      }
+
+      function loadGa() {
+        if (!hasGa || window.__gaLoaded) return;
+        window.__gaLoaded = true;
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = window.gtag || function() { dataLayer.push(arguments); };
+        window.gtag('js', new Date());
+        window.gtag('config', measurementId, { anonymize_ip: true });
+
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(measurementId);
+        document.head.appendChild(script);
+      }
+
+      function onAffiliateClick(event) {
+        const link = event.target.closest('a[data-affiliate="true"]');
+        if (!link) return;
+        if (!hasGa || !hasConsent() || typeof window.gtag !== 'function') return;
+        window.gtag('event', 'affiliate_click', {
+          link_url: link.href,
+          link_text: link.textContent || '',
+          page_path: window.location.pathname
+        });
+      }
+
+      function bindCookieControls() {
+        const accept = document.querySelector('[data-cookie-action="accept"]');
+        const reject = document.querySelector('[data-cookie-action="reject"]');
+        const open = document.getElementById('cookie-settings-open');
+        if (accept) {
+          accept.addEventListener('click', function() {
+            setConsent('accepted');
+            hideBanner();
+            loadGa();
+          });
+        }
+        if (reject) {
+          reject.addEventListener('click', function() {
+            setConsent('rejected');
+            hideBanner();
+          });
+        }
+        if (open) {
+          open.addEventListener('click', function() {
+            showBanner();
+          });
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        markAffiliateLinks();
+        document.addEventListener('click', onAffiliateClick);
+        if (!hasGa) return;
+        bindCookieControls();
+        if (hasConsent()) {
+          hideBanner();
+          loadGa();
+        } else {
+          showBanner();
+        }
+      });
+    })();
   </script>
 </body>
 </html>
