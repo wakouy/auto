@@ -23,6 +23,15 @@ analytics:
   ga4_measurement_id: ""
   ga4_property_id: ""
 
+ads:
+  provider: "adsense"
+  mode: "auto"
+  consent_required: true
+  default_cpc_usd: 0.005
+
+reporting:
+  ad_revenue_csv: "data/ad_revenue.csv"
+
 cost:
   max_monthly_usd: 5.0
 

@@ -28,6 +28,11 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
+      - name: Validate manual AdSense revenue CSV
+        run: |
+          set -euxo pipefail
+          python -m scripts.ad_revenue_validate --file data/ad_revenue.csv
+
       - name: Write GA credentials (optional)
         if: ${{ env.GA4_SERVICE_ACCOUNT_JSON != '' }}
         run: |

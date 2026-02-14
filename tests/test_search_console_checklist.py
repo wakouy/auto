@@ -34,6 +34,8 @@ def test_build_checks_includes_affiliate_ready_status() -> None:
         item.name == "Cookie同意バナー(同意前GA停止)が実装済み"
         for item in checks
     )
+    assert any(item.name == "AdSense Publisher ID 形式が妥当" for item in checks)
+    assert any(item.name == "同意後のみAdSense読込が実装済み" for item in checks)
 
 
 def test_render_markdown_has_manual_steps() -> None:

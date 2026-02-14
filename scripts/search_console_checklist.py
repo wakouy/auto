@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,8 +13,11 @@ if __package__ in {None, ""}:  # pragma: no cover
 
     sys.path.append(str(Path(__file__).resolve().parent.parent))
 
+from scripts.ad_revenue_validate import read_rows as read_ad_revenue_rows
 from scripts.common import dump_json, load_system_config, load_yaml, read_csv_rows, resolve_path
 from scripts.monetization_audit import TOOLS_COLUMNS
+
+ADSENSE_PUBLISHER_PATTERN = re.compile(r"^ca-pub-\d{16}$")
 
 
 @dataclass
@@ -56,7 +60,21 @@ def build_checks(
 ) -> list[CheckItem]:
     base_url = str(config["site"]["base_url"]).rstrip("/")
     measurement_id = str(site_config.get("ga4_measurement_id", "")).strip()
+    adsense_publisher_id = str(site_config.get("adsense_publisher_id", "")).strip()
     layout_text = resolve_path("_layouts/default.html").read_text(encoding="utf-8")
+    ad_revenue_path = resolve_path(
+        str(config.get("reporting", {}).get("ad_revenue_csv", "data/ad_revenue.csv"))
+    )
+
+    ad_revenue_valid = False
+    ad_revenue_detail = str(ad_revenue_path)
+    if ad_revenue_path.exists():
+        try:
+            read_ad_revenue_rows(ad_revenue_path)
+            ad_revenue_valid = True
+            ad_revenue_detail = f"{ad_revenue_path} (valid)"
+        except ValueError as exc:
+            ad_revenue_detail = f"{ad_revenue_path} ({exc})"
 
     checks: list[CheckItem] = [
         CheckItem(
@@ -68,6 +86,11 @@ def build_checks(
             name="GA4 Measurement ID が設定済み",
             passed=measurement_id.startswith("G-"),
             detail=measurement_id or "未設定",
+        ),
+        CheckItem(
+            name="AdSense Publisher ID 形式が妥当",
+            passed=bool(ADSENSE_PUBLISHER_PATTERN.match(adsense_publisher_id)),
+            detail=adsense_publisher_id or "未設定",
         ),
         CheckItem(
             name="robots.txt がリポジトリに存在",
@@ -102,6 +125,20 @@ def build_checks(
                 and "if (hasConsent())" in layout_text
             ),
             detail="_layouts/default.html",
+        ),
+        CheckItem(
+            name="同意後のみAdSense読込が実装済み",
+            passed=(
+                "function loadAdsense()" in layout_text
+                and "loadAdsense();" in layout_text
+                and "if (hasConsent())" in layout_text
+            ),
+            detail="_layouts/default.html",
+        ),
+        CheckItem(
+            name="data/ad_revenue.csv が存在し形式が妥当",
+            passed=ad_revenue_valid,
+            detail=ad_revenue_detail,
         ),
     ]
 
@@ -176,6 +213,7 @@ def render_markdown(
             "- [ ] Search ConsoleでURLプレフィックス プロパティを追加",
             f"- [ ] 所有権確認を完了（対象: {base_url}）",
             f"- [ ] `sitemap.xml` を送信（{base_url}/sitemap.xml）",
+            "- [ ] AdSense審査を通過し、Publisher IDを `_config.yml` に設定",
             "- [ ] インデックス未登録ページがあれば原因を確認",
             "- [ ] 主要記事URLをURL検査で送信",
             "",

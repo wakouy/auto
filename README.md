@@ -1,22 +1,24 @@
 # Auto Revenue Lab
 
-日本語AIツール特化の、自動投稿 + 自動レポートの最小収益化システムです。
+日本語AIツール特化の、自動投稿 + 自動レポートのハイブリッド収益化システムです。
 
 ## できること
 - 日次: キーワード選定 -> 記事生成 -> 品質ゲート -> `content/posts/` に自動保存
 - 日次: GitHub Actionsで自動コミットしてGitHub Pages公開
 - 日次: キーワード在庫を自動補充（投稿ネタ切れ防止）
 - 日次: GA4メトリクスを `data/analytics_metrics.csv` に自動同期（設定時）
-- 週次: PV/クリックから推定収益レポートを `reports/` に生成
+- 週次: Affiliate推定収益 + AdSense実績(手入力CSV)の合算レポートを `reports/` に生成
 - 週次: Search Console提出チェックリストを `reports/search-console-checklist.md` に生成
 - 規約対応: 広告表記ページ・プライバシーページを常設
 - 規約対応: 利用規約ページ + Cookie同意バナー（同意前はGA停止）
+- 同意後のみ GA4 と AdSense Auto Ads を読み込み
 - 収益優先: `approved/active` かつ実リンクの案件を優先投稿
 
 ## 必須構成
 - 設定: `config/system.yaml`
 - ツール台帳: `data/tools.csv`
 - キーワード台帳: `data/keywords.csv`
+- AdSense実績台帳: `data/ad_revenue.csv`
 - 記事: `content/posts/YYYY-MM-DD-<slug>.md`
 - 法令: `content/legal/disclosure.md`, `content/legal/privacy.md`
 - 法令: `content/legal/disclosure.md`, `content/legal/privacy.md`, `content/legal/terms.md`
@@ -31,7 +33,8 @@
    - `GA4_PROPERTY_ID`（任意）
    - `GA4_SERVICE_ACCOUNT_JSON`（任意）
 4. `config/system.yaml` の `site.base_url` を実URLへ更新
-5. `data/tools.csv` の `affiliate_url` をASP発行リンクへ更新
+5. `_config.yml` の `ga4_measurement_id` と `adsense_publisher_id` を設定（未設定でも動作は継続）
+6. `data/tools.csv` の `affiliate_url` をASP発行リンクへ更新
 
 ## ローカル実行
 ```bash
@@ -45,6 +48,7 @@ python -m scripts.sync_ga4_metrics --config config/system.yaml --metrics data/an
 python -m scripts.refresh_keywords --config config/system.yaml --keywords data/keywords.csv --tools data/tools.csv
 python -m scripts.monetization_audit --config config/system.yaml
 python -m scripts.search_console_checklist --config config/system.yaml --output reports/search-console-checklist.md
+python -m scripts.ad_revenue_validate --file data/ad_revenue.csv
 ```
 
 ## テスト
@@ -60,3 +64,5 @@ pytest -q
 - `affiliate_url` が `example.com` などのダミー値の場合は収益案件として扱わず、公式URLへフォールバック
 - CTAは2箇所以上を自動挿入し、クリック機会を増やす
 - `growth.min_keyword_pool` / `growth.keyword_add_limit` でキーワード補充量を制御可能
+- AdSense収益は `data/ad_revenue.csv` に週1回手入力（`date,adsense_revenue_usd,source,note`）
+- `adsense_publisher_id` が空の間は広告タグを読み込まない（審査前の安全運用）

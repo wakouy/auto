@@ -14,6 +14,7 @@ if __package__ in {None, ""}:  # pragma: no cover
     sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from scripts.common import load_system_config, resolve_path, today_jst
+from scripts.ad_revenue_validate import sum_ad_revenue
 
 METRICS_COLUMNS = ["date", "pv", "clicks"]
 
@@ -121,29 +122,38 @@ def build_report_markdown(
     pv_total: int,
     clicks_total: int,
     default_epc_usd: float,
-    source: str,
+    adsense_revenue_usd: float,
+    traffic_source: str,
+    adsense_source: str,
 ) -> str:
     ctr = (clicks_total / pv_total * 100.0) if pv_total > 0 else 0.0
-    estimated_revenue = clicks_total * default_epc_usd
-    reached_one_dollar = estimated_revenue >= 1.0
+    affiliate_revenue = clicks_total * default_epc_usd
+    total_revenue = affiliate_revenue + adsense_revenue_usd
+    reached_one_dollar = total_revenue >= 1.0
+    progress = min(999.0, (total_revenue / 1.0) * 100.0)
 
     lines = [
         "# Weekly Revenue Report",
         "",
         f"- 期間: {start_day.isoformat()} 〜 {end_day.isoformat()}",
-        f"- データソース: {source}",
-        f"- 目標(推定収益 $1): {'達成' if reached_one_dollar else '未達'}",
+        f"- データソース(トラフィック): {traffic_source}",
+        f"- データソース(AdSense): {adsense_source}",
+        f"- 目標(合算収益 $1): {'達成' if reached_one_dollar else '未達'}",
+        f"- 目標進捗: {progress:.1f}%",
         "",
         "## Metrics",
         f"- PV: {pv_total}",
         f"- Affiliate Clicks: {clicks_total}",
         f"- CTR: {ctr:.2f}%",
-        f"- 推定収益(USD): ${estimated_revenue:.2f}",
+        f"- Affiliate推定収益(USD): ${affiliate_revenue:.2f}",
+        f"- AdSense収益(USD): ${adsense_revenue_usd:.2f}",
+        f"- 合算収益(USD): ${total_revenue:.2f}",
         f"- EPC(固定): ${default_epc_usd:.4f}",
         "",
         "## Notes",
-        "- 推定収益はクリック数 x 固定EPCで算出しています。",
-        "- 実売上はASP管理画面で確認してください。",
+        "- Affiliate推定収益はクリック数 x 固定EPCで算出しています。",
+        "- AdSense収益は data/ad_revenue.csv の手入力値を使用しています。",
+        "- 実売上はASPおよびAdSense管理画面で確認してください。",
     ]
     return "\n".join(lines) + "\n"
 
@@ -157,6 +167,7 @@ def cli() -> int:
     parser = argparse.ArgumentParser(description="Generate weekly KPI report")
     parser.add_argument("--config", default="config/system.yaml")
     parser.add_argument("--metrics", default="data/analytics_metrics.csv")
+    parser.add_argument("--ad-revenue", default="")
     parser.add_argument("--reports-dir", default="reports")
     args = parser.parse_args()
 
@@ -176,11 +187,18 @@ def cli() -> int:
     )
     if ga4_result is not None:
         pv_total, clicks_total = ga4_result
-        source = "GA4 Data API"
+        traffic_source = "GA4 Data API"
     else:
         metrics_path = resolve_path(args.metrics)
         pv_total, clicks_total = _load_metrics_csv(metrics_path, start_day, end_day)
-        source = "data/analytics_metrics.csv"
+        traffic_source = "data/analytics_metrics.csv"
+
+    ad_revenue_default = str(
+        config.get("reporting", {}).get("ad_revenue_csv", "data/ad_revenue.csv")
+    )
+    ad_revenue_arg = args.ad_revenue.strip()
+    ad_revenue_path = resolve_path(ad_revenue_arg or ad_revenue_default)
+    adsense_revenue = sum_ad_revenue(ad_revenue_path, start_day, end_day)
 
     report = build_report_markdown(
         start_day=start_day,
@@ -188,7 +206,9 @@ def cli() -> int:
         pv_total=pv_total,
         clicks_total=clicks_total,
         default_epc_usd=float(config["affiliate"]["default_epc_usd"]),
-        source=source,
+        adsense_revenue_usd=adsense_revenue,
+        traffic_source=traffic_source,
+        adsense_source=str(ad_revenue_path),
     )
 
     year, week, _ = end_day.isocalendar()
@@ -201,7 +221,17 @@ def cli() -> int:
                 "report": str(report_path),
                 "pv": pv_total,
                 "clicks": clicks_total,
-                "source": source,
+                "traffic_source": traffic_source,
+                "adsense_source": str(ad_revenue_path),
+                "affiliate_estimated_revenue_usd": round(
+                    clicks_total * float(config["affiliate"]["default_epc_usd"]), 4
+                ),
+                "adsense_revenue_usd": round(adsense_revenue, 4),
+                "total_revenue_usd": round(
+                    clicks_total * float(config["affiliate"]["default_epc_usd"])
+                    + adsense_revenue,
+                    4,
+                ),
                 "week": f"{year}-W{week:02d}",
             },
             ensure_ascii=False,

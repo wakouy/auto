@@ -23,18 +23,26 @@
     {{ content }}
   </main>
 
+  {% assign has_tracking_stack = false %}
+  {% if site.ga4_measurement_id and site.ga4_measurement_id != "" %}
+    {% assign has_tracking_stack = true %}
+  {% endif %}
+  {% if site.adsense_publisher_id and site.adsense_publisher_id != "" %}
+    {% assign has_tracking_stack = true %}
+  {% endif %}
+
   <footer class="site-footer">
     <div class="wrap footer-links">
       <a href="{{ '/legal/disclosure/' | relative_url }}">広告表記</a>
       <a href="{{ '/legal/privacy/' | relative_url }}">プライバシーポリシー</a>
       <a href="{{ '/legal/terms/' | relative_url }}">利用規約</a>
-      {% if site.ga4_measurement_id and site.ga4_measurement_id != "" %}
+      {% if has_tracking_stack %}
       <button id="cookie-settings-open" type="button" class="cookie-settings-btn">Cookie設定</button>
       {% endif %}
     </div>
   </footer>
 
-  {% if site.ga4_measurement_id and site.ga4_measurement_id != "" %}
+  {% if has_tracking_stack %}
   <section
     id="cookie-consent-banner"
     class="cookie-banner"
@@ -44,8 +52,8 @@
     hidden
   >
     <p>
-      当サイトはアクセス解析（GA4）と成果測定のためにCookieを利用します。<br>
-      「同意する」を押すと計測を開始します。詳細は
+      当サイトはアクセス解析（GA4）と広告配信（AdSense）のためにCookieを利用します。<br>
+      「同意する」を押すと計測・広告配信を開始します。詳細は
       <a href="{{ '/legal/privacy/' | relative_url }}">プライバシーポリシー</a>
       をご確認ください。
     </p>
@@ -58,8 +66,11 @@
 
   <script>
     (function() {
-      const measurementId = '{{ site.ga4_measurement_id }}';
+      const measurementId = '{{ site.ga4_measurement_id }}'.trim();
+      const adsensePublisherId = '{{ site.adsense_publisher_id }}'.trim();
       const hasGa = measurementId && measurementId !== '';
+      const hasAdsense = /^ca-pub-\d{16}$/.test(adsensePublisherId);
+      const hasTrackers = hasGa || hasAdsense;
       const consentKey = 'arl_cookie_consent_v1';
 
       function markAffiliateLinks() {
@@ -116,6 +127,16 @@
         document.head.appendChild(script);
       }
 
+      function loadAdsense() {
+        if (!hasAdsense || window.__adsenseLoaded) return;
+        window.__adsenseLoaded = true;
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + encodeURIComponent(adsensePublisherId);
+        script.crossOrigin = 'anonymous';
+        document.head.appendChild(script);
+      }
+
       function onAffiliateClick(event) {
         const link = event.target.closest('a[data-affiliate="true"]');
         if (!link) return;
@@ -136,6 +157,7 @@
             setConsent('accepted');
             hideBanner();
             loadGa();
+            loadAdsense();
           });
         }
         if (reject) {
@@ -154,11 +176,12 @@
       document.addEventListener('DOMContentLoaded', function() {
         markAffiliateLinks();
         document.addEventListener('click', onAffiliateClick);
-        if (!hasGa) return;
+        if (!hasTrackers) return;
         bindCookieControls();
         if (hasConsent()) {
           hideBanner();
           loadGa();
+          loadAdsense();
         } else {
           showBanner();
         }
