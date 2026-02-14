@@ -24,7 +24,7 @@
 - [ ] GA4 Measurement ID 設定（未設定）
 - [ ] AdSense Publisher ID 設定（未設定）
 - [x] 収益化リンク準備（3/3）
-- [x] ad_revenue.csv 妥当性（/Users/shimojikouichi/Documents/auto/data/ad_revenue.csv (valid)）
+- [x] ad_revenue.csv 妥当性（/home/runner/work/auto/auto/data/ad_revenue.csv (valid)）
 - [x] Daily Publish workflow（.github/workflows/publish.yml）
 - [x] Weekly Report workflow（.github/workflows/weekly_report.yml）
 - [x] 公開サイト到達（HTTP 200）
