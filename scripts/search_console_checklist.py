@@ -206,6 +206,10 @@ def render_markdown(
         mark = "x" if item.passed else " "
         lines.append(f"- [{mark}] {item.name}（{item.detail}）")
 
+    by_name = {item.name: item for item in checks}
+    ga4_ok = by_name.get("GA4 Measurement ID が設定済み", CheckItem("", False, "")).passed
+    adsense_ok = by_name.get("AdSense Publisher ID 形式が妥当", CheckItem("", False, "")).passed
+
     lines.extend(
         [
             "",
@@ -213,7 +217,16 @@ def render_markdown(
             "- [ ] Search ConsoleでURLプレフィックス プロパティを追加",
             f"- [ ] 所有権確認を完了（対象: {base_url}）",
             f"- [ ] `sitemap.xml` を送信（{base_url}/sitemap.xml）",
-            "- [ ] AdSense審査を通過し、Publisher IDを `_config.yml` に設定",
+            (
+                "- [x] AdSense審査/Publisher ID設定は完了"
+                if adsense_ok
+                else "- [ ] AdSense審査を通過し、Publisher IDを `_config.yml` に設定"
+            ),
+            (
+                "- [x] GA4 Measurement ID設定は完了"
+                if ga4_ok
+                else "- [ ] GA4 Measurement ID を `_config.yml` に設定"
+            ),
             "- [ ] インデックス未登録ページがあれば原因を確認",
             "- [ ] 主要記事URLをURL検査で送信",
             "",

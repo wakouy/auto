@@ -109,6 +109,18 @@ def render_report_markdown(
     progress = min(999.0, total_7d / 7.0 / 1.0 * 100.0)
     passed = sum(1 for item in status_items if item.passed)
     total = len(status_items)
+    by_name = {item.name: item for item in status_items}
+
+    next_lines: list[str] = []
+    if not by_name.get("GA4 Measurement ID 設定", StatusItem("", False, "")).passed:
+        next_lines.append("- GA4 Measurement ID を `_config.yml` に設定する。")
+    if not by_name.get("AdSense Publisher ID 設定", StatusItem("", False, "")).passed:
+        next_lines.append("- AdSense Publisher ID を `_config.yml` に設定する。")
+    if not by_name.get("収益化リンク準備", StatusItem("", False, "")).passed:
+        next_lines.append("- `tools.csv` の `affiliate_url` と `status` を見直す。")
+    if not next_lines:
+        next_lines.append("- ID設定は完了済み。Search Console提出と流入改善を継続する。")
+    next_lines.append("- `data/ad_revenue.csv` を週1で更新する。")
 
     lines = [
         "# Monetization Dashboard",
@@ -139,15 +151,7 @@ def render_report_markdown(
         mark = "x" if item.passed else " "
         lines.append(f"- [{mark}] {item.name}（{item.detail}）")
 
-    lines.extend(
-        [
-            "",
-            "## Next",
-            "- GA4 Measurement ID と AdSense Publisher ID を設定してトラッキングを有効化する。",
-            "- Search Console で sitemap 送信後、流入改善を継続する。",
-            "- `data/ad_revenue.csv` を週1で更新する。",
-        ]
-    )
+    lines.extend(["", "## Next"] + next_lines)
     return "\n".join(lines) + "\n"
 
 
