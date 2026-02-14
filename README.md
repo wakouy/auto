@@ -53,6 +53,7 @@ python -m scripts.monetization_audit --config config/system.yaml
 python -m scripts.search_console_checklist --config config/system.yaml --output reports/search-console-checklist.md
 python -m scripts.ad_revenue_validate --file data/ad_revenue.csv
 python -m scripts.update_dashboard --config config/system.yaml --site-config _config.yml --tools data/tools.csv --metrics data/analytics_metrics.csv --ad-revenue data/ad_revenue.csv --output-report reports/monetization-dashboard.md --output-site content/dashboard.md
+python -m scripts.set_tracking_ids --config _config.yml --ga4 G-XXXXXXXXXX --adsense ca-pub-1234567890123456
 ```
 
 ## テスト
