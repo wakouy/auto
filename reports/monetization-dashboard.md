@@ -1,6 +1,6 @@
 # Monetization Dashboard
 
-- 更新日時: 2026-02-14 12:25 JST
+- 更新日時: 2026-02-14 12:26 JST
 - サイト: https://wakouy.github.io/auto
 - 目標進捗（$1/日基準）: 0.0%
 
@@ -24,7 +24,7 @@
 - [x] GA4 Measurement ID 設定（G-7Z5Y9GS01K）
 - [x] AdSense Publisher ID 設定（ca-pub-8816776160139989）
 - [x] 収益化リンク準備（3/3）
-- [x] ad_revenue.csv 妥当性（/Users/shimojikouichi/Documents/auto/data/ad_revenue.csv (valid)）
+- [x] ad_revenue.csv 妥当性（/home/runner/work/auto/auto/data/ad_revenue.csv (valid)）
 - [x] Daily Publish workflow（.github/workflows/publish.yml）
 - [x] Weekly Report workflow（.github/workflows/weekly_report.yml）
 - [x] 公開サイト到達（HTTP 200）
