@@ -43,6 +43,11 @@ jobs:
           set -euxo pipefail
           python -m scripts.publish --config config/system.yaml 2>&1 | tee publish.log
 
+      - name: Update monetization dashboard
+        run: |
+          set -euxo pipefail
+          python -m scripts.update_dashboard --config config/system.yaml --site-config _config.yml --tools data/tools.csv --metrics data/analytics_metrics.csv --ad-revenue data/ad_revenue.csv --output-report reports/monetization-dashboard.md --output-site content/dashboard.md
+
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
@@ -51,8 +56,8 @@ jobs:
       - name: Commit and push if changed
         id: commit
         run: |
-          if [[ -n "$(git status --porcelain content/posts data/keywords.csv data/tools.csv)" ]]; then
-            git add content/posts data/keywords.csv data/tools.csv
+          if [[ -n "$(git status --porcelain content/posts content/dashboard.md reports/monetization-dashboard.md data/keywords.csv data/tools.csv)" ]]; then
+            git add content/posts content/dashboard.md reports/monetization-dashboard.md data/keywords.csv data/tools.csv
             git commit -m "chore: auto-publish daily post"
             git pull --rebase origin main
             git push origin HEAD:main

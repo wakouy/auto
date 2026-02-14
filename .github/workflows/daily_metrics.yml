@@ -39,6 +39,11 @@ jobs:
           set -euxo pipefail
           python -m scripts.sync_ga4_metrics --config config/system.yaml --metrics data/analytics_metrics.csv
 
+      - name: Update monetization dashboard
+        run: |
+          set -euxo pipefail
+          python -m scripts.update_dashboard --config config/system.yaml --site-config _config.yml --tools data/tools.csv --metrics data/analytics_metrics.csv --ad-revenue data/ad_revenue.csv --output-report reports/monetization-dashboard.md --output-site content/dashboard.md
+
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
@@ -46,8 +51,8 @@ jobs:
 
       - name: Commit and push metrics
         run: |
-          if [[ -n "$(git status --porcelain data/analytics_metrics.csv)" ]]; then
-            git add data/analytics_metrics.csv
+          if [[ -n "$(git status --porcelain data/analytics_metrics.csv reports/monetization-dashboard.md content/dashboard.md)" ]]; then
+            git add data/analytics_metrics.csv reports/monetization-dashboard.md content/dashboard.md
             git commit -m "chore: sync daily analytics metrics"
             git pull --rebase origin main
             git push origin HEAD:main

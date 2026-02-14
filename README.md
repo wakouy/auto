@@ -9,6 +9,7 @@
 - 日次: GA4メトリクスを `data/analytics_metrics.csv` に自動同期（設定時）
 - 週次: Affiliate推定収益 + AdSense実績(手入力CSV)の合算レポートを `reports/` に生成
 - 週次: Search Console提出チェックリストを `reports/search-console-checklist.md` に生成
+- 日次/週次: 進捗と収益を `content/dashboard.md` と `reports/monetization-dashboard.md` に自動更新
 - 規約対応: 広告表記ページ・プライバシーページを常設
 - 規約対応: 利用規約ページ + Cookie同意バナー（同意前はGA停止）
 - 同意後のみ GA4 と AdSense Auto Ads を読み込み
@@ -19,6 +20,8 @@
 - ツール台帳: `data/tools.csv`
 - キーワード台帳: `data/keywords.csv`
 - AdSense実績台帳: `data/ad_revenue.csv`
+- ダッシュボード(公開): `content/dashboard.md` (`/dashboard/`)
+- ダッシュボード(詳細): `reports/monetization-dashboard.md`
 - 記事: `content/posts/YYYY-MM-DD-<slug>.md`
 - 法令: `content/legal/disclosure.md`, `content/legal/privacy.md`
 - 法令: `content/legal/disclosure.md`, `content/legal/privacy.md`, `content/legal/terms.md`
@@ -49,6 +52,7 @@ python -m scripts.refresh_keywords --config config/system.yaml --keywords data/k
 python -m scripts.monetization_audit --config config/system.yaml
 python -m scripts.search_console_checklist --config config/system.yaml --output reports/search-console-checklist.md
 python -m scripts.ad_revenue_validate --file data/ad_revenue.csv
+python -m scripts.update_dashboard --config config/system.yaml --site-config _config.yml --tools data/tools.csv --metrics data/analytics_metrics.csv --ad-revenue data/ad_revenue.csv --output-report reports/monetization-dashboard.md --output-site content/dashboard.md
 ```
 
 ## テスト
@@ -66,3 +70,4 @@ pytest -q
 - `growth.min_keyword_pool` / `growth.keyword_add_limit` でキーワード補充量を制御可能
 - AdSense収益は `data/ad_revenue.csv` に週1回手入力（`date,adsense_revenue_usd,source,note`）
 - `adsense_publisher_id` が空の間は広告タグを読み込まない（審査前の安全運用）
+- 進捗は公開ページ `/dashboard/` で即確認、詳細は `reports/monetization-dashboard.md` を確認
